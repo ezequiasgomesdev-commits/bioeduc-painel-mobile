@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel BioEduc</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d6e5f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BioEduc">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,440;9..144,600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f2f6f3; --surface: #ffffff; --surface-2: #e8f0ea; --border: #d5e0d8;
+    --text: #16211b; --text-2: #4d5c52; --text-3: #839186;
+    --accent: #0d6e5f; --accent-soft: #dcefe9;
+    --gold: #a8752c; --gold-soft: #f5ead7;
+    --ok: #1f7a4d; --ok-soft: #e1f3e7;
+    --warn: #93630b; --warn-soft: #faf0d8;
+    --crit: #af3a2c; --crit-soft: #fae6e2;
+    --muted-soft: #e9ece9;
+    --shadow: 0 1px 2px rgba(22,33,27,.05), 0 6px 20px rgba(22,33,27,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1310; --surface: #131b16; --surface-2: #182019; --border: #253026;
+      --text: #e6ece7; --text-2: #a3b0a6; --text-3: #6d7a70;
+      --accent: #3fcdb3; --accent-soft: #12332c;
+      --gold: #e0ac5c; --gold-soft: #34280f;
+      --ok: #4fda8b; --ok-soft: #12301f;
+      --warn: #e0b04a; --warn-soft: #332710;
+      --crit: #f2786c; --crit-soft: #3a1c17;
+      --muted-soft: #1c2521;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1310; --surface: #131b16; --surface-2: #182019; --border: #253026;
+    --text: #e6ece7; --text-2: #a3b0a6; --text-3: #6d7a70;
+    --accent: #3fcdb3; --accent-soft: #12332c;
+    --gold: #e0ac5c; --gold-soft: #34280f;
+    --ok: #4fda8b; --ok-soft: #12301f;
+    --warn: #e0b04a; --warn-soft: #332710;
+    --crit: #f2786c; --crit-soft: #3a1c17;
+    --muted-soft: #1c2521;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Work Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 15.5px; line-height: 1.5;
+  }
+  .folha { max-width: 720px; margin: 0 auto; padding: 28px 20px 64px; }
+  h1, h2 { font-family: "Fraunces", ui-serif, Georgia, serif; text-wrap: balance; margin: 0; }
+  h1 { font-size: 27px; font-weight: 600; }
+  h2 { font-size: 17px; font-weight: 600; margin-bottom: 12px; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+  .cabecalho { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; padding-bottom: 20px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .eyebrow { font-size: 11.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--accent); font-weight: 600; margin: 0 0 5px; }
+  .ao-vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+  .ao-vivo .ponto { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); animation: pulsar 2.4s ease-in-out infinite; }
+  .ao-vivo.offline .ponto { background: var(--crit); box-shadow: 0 0 0 3px var(--crit-soft); animation: none; }
+  @keyframes pulsar { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .ao-vivo .ponto { animation: none; } }
+  .meta { text-align: right; }
+  .sync { font-size: 11.5px; color: var(--text-3); margin-top: 3px; }
+
+  .resumo { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 32px; box-shadow: var(--shadow); }
+  .resumo-item { background: var(--surface); padding: 15px 16px; }
+  .resumo-num { font-family: "IBM Plex Mono", monospace; font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .resumo-label { color: var(--text-2); font-size: 11.5px; margin-top: 3px; }
+
+  section { margin-bottom: 34px; }
+  .modalidade { margin-bottom: 18px; }
+  .modalidade-titulo { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-2); font-weight: 600; margin-bottom: 8px; }
+  .modalidade-titulo .contagem { font-family: "IBM Plex Mono", monospace; color: var(--text-3); text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+  .cartoes { display: grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 10px; }
+  .cliente-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .cliente-cabecalho { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+  .nome-cliente { font-weight: 600; }
+  .periodo-val { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
+  .rotulo { color: var(--text-3); font-weight: 400; font-family: "Work Sans", sans-serif; font-size: 10.5px; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.crit { background: var(--crit-soft); color: var(--crit); }
+  .pill.muted { background: var(--muted-soft); color: var(--text-3); }
+  .pill-sm { padding: 1px 8px; font-size: 10.5px; }
+
+  .checagem { color: var(--text-3); font-size: 12px; margin-bottom: 2px; }
+  .vazio { color: var(--text-3); font-style: italic; font-size: 13.5px; margin: 0; padding: 10px 2px; }
+
+  .execucoes { margin-top: 8px; }
+  .execucoes summary { cursor: pointer; font-size: 12.5px; color: var(--text-2); font-weight: 500; list-style: none; }
+  .execucoes summary::-webkit-details-marker { display: none; }
+  .execucoes summary::before { content: "▸ "; color: var(--text-3); }
+  .execucoes[open] summary::before { content: "▾ "; }
+  .execucoes summary .contagem { font-family: "IBM Plex Mono", monospace; color: var(--text-3); font-weight: 400; }
+  .execucoes-lista { margin-top: 6px; }
+  .exec-item { padding: 6px 0; border-top: 1px solid var(--border); font-size: 12.5px; }
+  .exec-linha1 { display: flex; align-items: center; gap: 7px; }
+  .exec-acao { flex: 1; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .exec-ts { color: var(--text-3); font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+  .exec-detalhe { color: var(--text-2); font-size: 11.5px; margin-top: 2px; padding-left: 2px; }
+
+  .changelog { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2px 0; box-shadow: var(--shadow); }
+  .entrada { display: grid; grid-template-columns: 82px 1fr; gap: 14px; padding: 10px 16px; border-top: 1px solid var(--border); font-size: 13px; }
+  .entrada:first-child { border-top: none; }
+  .entrada-data { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--text-3); }
+  .entrada-desc { color: var(--text-2); }
+
+  footer { color: var(--text-3); font-size: 12px; padding-top: 16px; border-top: 1px solid var(--border); }
+  footer .selo { display: inline-flex; align-items: center; gap: 5px; color: var(--gold); font-weight: 500; }
+  footer .selo::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .estado-carregando, .estado-erro { padding: 40px 4px; text-align: center; color: var(--text-2); }
+  .estado-erro { color: var(--crit); }
+
+  @media (max-width: 640px) {
+    .resumo { grid-template-columns: repeat(2,1fr); }
+    .entrada { grid-template-columns: 1fr; gap: 2px; }
+    .cartoes { grid-template-columns: 1fr; }
+    .cabecalho { align-items: flex-start; }
+    .meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="folha">
+
+  <div class="cabecalho">
+    <div>
+      <p class="eyebrow">BioEduc · administração</p>
+      <h1>Painel</h1>
+    </div>
+    <div class="meta">
+      <span class="ao-vivo" id="ao-vivo"><span class="ponto"></span><span id="ao-vivo-texto">conectando…</span></span>
+      <div class="sync mono" id="sync-texto">—</div>
+    </div>
+  </div>
+
+  <div class="resumo">
+    <div class="resumo-item"><div class="resumo-num mono" id="resumo-clientes">—</div><div class="resumo-label">Clientes ativos</div></div>
+    <div class="resumo-item"><div class="resumo-num" id="resumo-waha">—</div><div class="resumo-label">WhatsApp</div></div>
+    <div class="resumo-item"><div class="resumo-num mono" id="resumo-tarefas">—</div><div class="resumo-label">Tarefas agora</div></div>
+  </div>
+
+  <section>
+    <h2>Clientes</h2>
+    <div id="clientes-conteudo"><div class="estado-carregando">Carregando painel…</div></div>
+  </section>
+
+  <section id="secao-commits" hidden>
+    <h2>Últimos commits</h2>
+    <div class="changelog" id="changelog-conteudo"></div>
+  </section>
+
+  <footer>
+    <p><span class="selo">Servido pelo Supabase</span> — funciona de qualquer lugar com internet,
+    sem precisar do notebook estar na mesma rede. Os dados são protegidos por token; esta
+    página sozinha não revela nada.</p>
+    <p>Período mostrado é o CONFIGURADO no cliente — pode estar desatualizado. "Checado"
+    reflete a última consulta feita pelo WhatsApp, não uma checagem ao vivo agora.</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var SUPABASE_URL = "https://lehqvfgsadnpfgpjekdh.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_yKLpYBQd2gYQTefnKBaKQg_zCRc_Z1L";
+  var TOKEN_PADRAO = "ciNVtGsxFURRpF6W-b62N5_Z549wPF11";
+  var TOKEN = new URLSearchParams(location.search).get("token") || TOKEN_PADRAO;
+
+  var MODALIDADES = ["ATIVIDADE_COMPLEMENTAR", "ENSINO_REGULAR", "EDUCA_MAIS", "EJA"];
+  var MODALIDADE_FMT = {
+    ATIVIDADE_COMPLEMENTAR: "Atividade Complementar",
+    ENSINO_REGULAR: "Ensino Regular",
+    EDUCA_MAIS: "Educa Mais",
+    EJA: "EJA"
+  };
+
+  var aoVivoEl = document.getElementById("ao-vivo");
+  var aoVivoTexto = document.getElementById("ao-vivo-texto");
+  var syncEl = document.getElementById("sync-texto");
+  var clientesEl = document.getElementById("clientes-conteudo");
+
+  function escapar(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function pill(classe, texto) {
+    return '<span class="pill ' + classe + '">' + escapar(texto) + "</span>";
+  }
+
+  function situacaoHtml(c) {
+    if (!c.tem_cache) return pill("muted", "sem cache recente");
+    if (c.pend_freq === 0 && c.pend_cont === 0) return pill("ok", "tudo em dia");
+    return pill("warn", c.pend_freq + " freq · " + c.pend_cont + " conteúdo pendente(s)");
+  }
+
+  function execucoesHtml(execs) {
+    if (!execs || !execs.length) return '<p class="vazio">Sem execuções registradas ainda.</p>';
+    return execs.map(function (e) {
+      var classe = { sucesso: "ok", erro: "crit", parcial: "warn" }[e.status] || "muted";
+      var periodoTxt = e.periodo ? e.periodo + "º · " : "";
+      var hora = e.ts && e.ts.length > 15 ? e.ts.substring(11, 16) : e.ts || "";
+      var detalhe = e.detalhe ? '<div class="exec-detalhe">' + escapar(e.detalhe) + "</div>" : "";
+      return (
+        '<div class="exec-item"><div class="exec-linha1">' +
+        '<span class="pill ' + classe + ' pill-sm">' + escapar(e.status) + "</span>" +
+        '<span class="exec-acao">' + escapar(periodoTxt + e.acao) + "</span>" +
+        '<span class="exec-ts">' + escapar(hora) + "</span></div>" +
+        detalhe + "</div>"
+      );
+    }).join("");
+  }
+
+  function cardHtml(c) {
+    return (
+      '<div class="cliente-card"><div class="cliente-cabecalho"><span class="nome-cliente">' +
+      escapar(c.nome) + '</span><span class="periodo-val">' + escapar(c.periodo_cfg) +
+      'º <span class="rotulo">período</span></span></div>' +
+      '<div class="cliente-situacao">' + situacaoHtml(c) + "</div>" +
+      '<div class="checagem">Checado ' + escapar(c.cache_idade) + "</div>" +
+      '<details class="execucoes"><summary>Últimas execuções <span class="contagem">(' +
+      c.execucoes.length + ')</span></summary><div class="execucoes-lista">' +
+      execucoesHtml(c.execucoes) + "</div></details></div>"
+    );
+  }
+
+  function renderClientes(clientes) {
+    var porModalidade = {};
+    clientes.forEach(function (c) {
+      (porModalidade[c.modalidade] = porModalidade[c.modalidade] || []).push(c);
+    });
+    var html = MODALIDADES.map(function (m) {
+      var lista = porModalidade[m] || [];
+      var corpo = lista.length
+        ? '<div class="cartoes">' + lista.map(cardHtml).join("") + "</div>"
+        : '<p class="vazio">Nenhum cliente cadastrado nesta modalidade.</p>';
+      return (
+        '<div class="modalidade"><div class="modalidade-titulo">' + MODALIDADE_FMT[m] +
+        ' <span class="contagem">' + lista.length + " cliente(s)</span></div>" + corpo + "</div>"
+      );
+    }).join("");
+    clientesEl.innerHTML = html;
+  }
+
+  function renderCommits(commits) {
+    var secao = document.getElementById("secao-commits");
+    if (!commits || !commits.length) { secao.hidden = true; return; }
+    secao.hidden = false;
+    document.getElementById("changelog-conteudo").innerHTML = commits.map(function (c) {
+      return (
+        '<div class="entrada"><div class="entrada-data mono">' + escapar(c.data) +
+        '</div><div class="entrada-desc">' + escapar(c.msg) + "</div></div>"
+      );
+    }).join("");
+  }
+
+  function marcarOnline() {
+    aoVivoEl.classList.remove("offline");
+    aoVivoTexto.textContent = "ao vivo";
+  }
+
+  function marcarOffline(msg) {
+    aoVivoEl.classList.add("offline");
+    aoVivoTexto.textContent = msg;
+  }
+
+  function atualizar() {
+    fetch(SUPABASE_URL + "/rest/v1/rpc/obter_painel_status", {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ token: TOKEN })
+    })
+      .then(function (r) {
+        if (r.status === 400 || r.status === 401 || r.status === 403) {
+          throw new Error("token inválido");
+        }
+        if (!r.ok) throw new Error("http " + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        marcarOnline();
+        document.getElementById("resumo-clientes").textContent = (d.clientes || []).length;
+        document.getElementById("resumo-waha").innerHTML = d.saude
+          ? pill(d.saude.waha === "WORKING" ? "ok" : "crit", d.saude.waha)
+          : pill("muted", "?");
+        document.getElementById("resumo-tarefas").textContent = d.saude ? d.saude.tarefas_ativas : "—";
+        renderClientes(d.clientes || []);
+        renderCommits(d.commits || []);
+        syncEl.textContent = "gerado em " + (d.gerado_em || "—");
+      })
+      .catch(function (err) {
+        marcarOffline(err.message === "token inválido" ? "token inválido" : "sem conexão");
+        if (!clientesEl.querySelector(".cliente-card")) {
+          clientesEl.innerHTML = '<div class="estado-erro">Não foi possível carregar o painel agora. Tentando de novo…</div>';
+        }
+      });
+  }
+
+  atualizar();
+  setInterval(function () {
+    if (document.visibilityState === "visible") atualizar();
+  }, 15000);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") atualizar();
+  });
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>
