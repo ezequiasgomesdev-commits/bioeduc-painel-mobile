@@ -117,6 +117,11 @@
   .exec-ts { color: var(--text-3); font-family: "IBM Plex Mono", monospace; font-size: 11px; }
   .exec-detalhe { color: var(--text-2); font-size: 11.5px; margin-top: 2px; padding-left: 2px; }
 
+  .freq-item { padding: 6px 0; border-top: 1px solid var(--border); font-size: 12.5px; }
+  .freq-item:first-child { border-top: none; }
+  .freq-grupo { font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .freq-meses { color: var(--text-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+
   footer { color: var(--text-3); font-size: 12px; padding-top: 16px; border-top: 1px solid var(--border); }
   footer .selo { display: inline-flex; align-items: center; gap: 5px; color: var(--gold); font-weight: 500; }
   footer .selo::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
@@ -206,6 +211,29 @@
     return pill("warn", c.pend_freq + " freq · " + c.pend_cont + " conteúdo pendente(s)");
   }
 
+  function freqDetalheHtml(itens) {
+    if (!itens || !itens.length) return "";
+    var porGrupo = {};
+    var ordem = [];
+    itens.forEach(function (it) {
+      var chave = it.turma + " · " + it.disciplina;
+      if (!porGrupo[chave]) { porGrupo[chave] = []; ordem.push(chave); }
+      porGrupo[chave].push(it);
+    });
+    return ordem.map(function (chave) {
+      var meses = porGrupo[chave].map(function (it) {
+        var temLista = it.dias_lista && it.dias_lista.length;
+        var dias = temLista ? it.dias_lista.join(", ") : String(it.dias);
+        var rotulo = temLista && it.dias_lista.length === 1 ? "dia" : "dias";
+        return escapar(it.mes) + " (" + rotulo + " " + escapar(dias) + ")";
+      }).join(" · ");
+      return (
+        '<div class="freq-item"><div class="freq-grupo">' + escapar(chave) + "</div>" +
+        '<div class="freq-meses">' + meses + "</div></div>"
+      );
+    }).join("");
+  }
+
   function execucoesHtml(execs) {
     if (!execs || !execs.length) return '<p class="vazio">Sem execuções registradas ainda.</p>';
     return execs.map(function (e) {
@@ -229,9 +257,16 @@
   }
 
   function corpoPeriodoHtml(dp) {
+    var freqItens = dp.freq_detalhe || [];
+    var blocoFreq = freqItens.length
+      ? '<details class="execucoes"><summary>Frequência pendente <span class="contagem">(' +
+        freqItens.length + ')</span></summary><div class="execucoes-lista">' +
+        freqDetalheHtml(freqItens) + "</div></details>"
+      : "";
     return (
       '<div class="cliente-situacao">' + situacaoHtml(dp) + "</div>" +
       '<div class="checagem">Checado ' + escapar(dp.cache_idade) + "</div>" +
+      blocoFreq +
       '<details class="execucoes"><summary>Últimas execuções <span class="contagem">(' +
       dp.execucoes.length + ')</span></summary><div class="execucoes-lista">' +
       execucoesHtml(dp.execucoes) + "</div></details>"
@@ -298,7 +333,7 @@
       tabs[i].classList.toggle("ativo", tabs[i].getAttribute("data-periodo") === periodo);
     }
     var dp = (cliente.periodos && cliente.periodos[periodo]) ||
-      { tem_cache: false, pend_freq: null, pend_cont: null, cache_idade: "sem checagem recente", execucoes: [] };
+      { tem_cache: false, pend_freq: null, pend_cont: null, cache_idade: "sem checagem recente", execucoes: [], freq_detalhe: [] };
     card.querySelector(".periodo-corpo").innerHTML = corpoPeriodoHtml(dp);
   });
 
