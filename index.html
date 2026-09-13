@@ -67,6 +67,8 @@
   .ao-vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
   .ao-vivo .ponto { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); animation: pulsar 2.4s ease-in-out infinite; }
   .ao-vivo.offline .ponto { background: var(--crit); box-shadow: 0 0 0 3px var(--crit-soft); animation: none; }
+  .ao-vivo.desatualizado .ponto { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); animation: none; }
+  .ao-vivo.desatualizado #ao-vivo-texto, .ao-vivo.offline #ao-vivo-texto { color: var(--text); font-weight: 500; }
   @keyframes pulsar { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
   @media (prefers-reduced-motion: reduce) { .ao-vivo .ponto { animation: none; } }
   .meta { text-align: right; }
@@ -86,8 +88,10 @@
   .cliente-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
   .cliente-cabecalho { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
   .nome-cliente { font-weight: 600; }
-  .periodo-val { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
-  .rotulo { color: var(--text-3); font-weight: 400; font-family: "Work Sans", sans-serif; font-size: 10.5px; }
+  .periodo-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+  .periodo-tab { flex: 1; padding: 5px 0; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); border-radius: 8px; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .periodo-tab.ativo { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+  .periodo-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; white-space: nowrap; }
   .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
@@ -122,7 +126,6 @@
 
   @media (max-width: 640px) {
     .resumo { grid-template-columns: repeat(2,1fr); }
-    .entrada { grid-template-columns: 1fr; gap: 2px; }
     .cartoes { grid-template-columns: 1fr; }
     .cabecalho { align-items: flex-start; }
     .meta { text-align: left; }
@@ -158,8 +161,10 @@
     <p><span class="selo">Servido pelo Supabase</span> — funciona de qualquer lugar com internet,
     sem precisar do notebook estar na mesma rede. Os dados são protegidos por token; esta
     página sozinha não revela nada.</p>
-    <p>Período mostrado é o CONFIGURADO no cliente — pode estar desatualizado. "Checado"
-    reflete a última consulta feita pelo WhatsApp, não uma checagem ao vivo agora.</p>
+    <p>Escolha o período (1º a 4º) em cada cliente pra ver o que foi feito naquele período
+    específico. "Checado" reflete a última consulta feita pelo WhatsApp naquele período, não
+    uma checagem ao vivo agora — e o indicador no topo mostra a idade real do último envio
+    do notebook, não apenas se a conexão está de pé.</p>
   </footer>
 
 </div>
@@ -183,6 +188,7 @@
   var aoVivoTexto = document.getElementById("ao-vivo-texto");
   var syncEl = document.getElementById("sync-texto");
   var clientesEl = document.getElementById("clientes-conteudo");
+  var ULTIMO_CLIENTES = [];
 
   function escapar(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -217,20 +223,49 @@
     }).join("");
   }
 
-  function cardHtml(c) {
+  function periodoValido(p) {
+    var n = parseInt(p, 10);
+    return n >= 1 && n <= 4 ? String(n) : "1";
+  }
+
+  function corpoPeriodoHtml(dp) {
     return (
-      '<div class="cliente-card"><div class="cliente-cabecalho"><span class="nome-cliente">' +
-      escapar(c.nome) + '</span><span class="periodo-val">' + escapar(c.periodo_cfg) +
-      'º <span class="rotulo">período</span></span></div>' +
-      '<div class="cliente-situacao">' + situacaoHtml(c) + "</div>" +
-      '<div class="checagem">Checado ' + escapar(c.cache_idade) + "</div>" +
+      '<div class="cliente-situacao">' + situacaoHtml(dp) + "</div>" +
+      '<div class="checagem">Checado ' + escapar(dp.cache_idade) + "</div>" +
       '<details class="execucoes"><summary>Últimas execuções <span class="contagem">(' +
-      c.execucoes.length + ')</span></summary><div class="execucoes-lista">' +
-      execucoesHtml(c.execucoes) + "</div></details></div>"
+      dp.execucoes.length + ')</span></summary><div class="execucoes-lista">' +
+      execucoesHtml(dp.execucoes) + "</div></details>"
+    );
+  }
+
+  function tabsHtml(ativo) {
+    return '<div class="periodo-tabs">' + ["1", "2", "3", "4"].map(function (p) {
+      var classe = p === ativo ? "periodo-tab ativo" : "periodo-tab";
+      return '<button type="button" class="' + classe + '" data-periodo="' + p + '">' + p + "º</button>";
+    }).join("") + "</div>";
+  }
+
+  function cardHtml(c, selecaoAnterior) {
+    var ativo = (selecaoAnterior && selecaoAnterior[c.nome_raw]) || periodoValido(c.periodo_cfg);
+    var dp = (c.periodos && c.periodos[ativo]) || c;
+    return (
+      '<div class="cliente-card" data-nome="' + escapar(c.nome_raw) + '" data-periodo-ativo="' + ativo + '">' +
+      '<div class="cliente-cabecalho"><span class="nome-cliente">' + escapar(c.nome) + "</span></div>" +
+      tabsHtml(ativo) +
+      '<div class="periodo-corpo">' + corpoPeriodoHtml(dp) + "</div></div>"
     );
   }
 
   function renderClientes(clientes) {
+    // Preserva a aba de período que o usuário tinha escolhido em cada card -- sem isso,
+    // o poll de 15s reseta pra aba do período configurado no meio de uma consulta.
+    var selecaoAnterior = {};
+    var cardsAtuais = clientesEl.querySelectorAll(".cliente-card");
+    for (var i = 0; i < cardsAtuais.length; i++) {
+      selecaoAnterior[cardsAtuais[i].getAttribute("data-nome")] = cardsAtuais[i].getAttribute("data-periodo-ativo");
+    }
+
+    ULTIMO_CLIENTES = clientes;
     var porModalidade = {};
     clientes.forEach(function (c) {
       (porModalidade[c.modalidade] = porModalidade[c.modalidade] || []).push(c);
@@ -238,7 +273,7 @@
     var html = MODALIDADES.map(function (m) {
       var lista = porModalidade[m] || [];
       var corpo = lista.length
-        ? '<div class="cartoes">' + lista.map(cardHtml).join("") + "</div>"
+        ? '<div class="cartoes">' + lista.map(function (c) { return cardHtml(c, selecaoAnterior); }).join("") + "</div>"
         : '<p class="vazio">Nenhum cliente cadastrado nesta modalidade.</p>';
       return (
         '<div class="modalidade"><div class="modalidade-titulo">' + MODALIDADE_FMT[m] +
@@ -248,13 +283,56 @@
     clientesEl.innerHTML = html;
   }
 
-  function marcarOnline() {
-    aoVivoEl.classList.remove("offline");
-    aoVivoTexto.textContent = "ao vivo";
+  clientesEl.addEventListener("click", function (e) {
+    var btn = e.target.closest(".periodo-tab");
+    if (!btn) return;
+    var card = btn.closest(".cliente-card");
+    if (!card) return;
+    var nomeRaw = card.getAttribute("data-nome");
+    var periodo = btn.getAttribute("data-periodo");
+    var cliente = ULTIMO_CLIENTES.filter(function (c) { return c.nome_raw === nomeRaw; })[0];
+    if (!cliente) return;
+    card.setAttribute("data-periodo-ativo", periodo);
+    var tabs = card.querySelectorAll(".periodo-tab");
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].classList.toggle("ativo", tabs[i].getAttribute("data-periodo") === periodo);
+    }
+    var dp = (cliente.periodos && cliente.periodos[periodo]) ||
+      { tem_cache: false, pend_freq: null, pend_cont: null, cache_idade: "sem checagem recente", execucoes: [] };
+    card.querySelector(".periodo-corpo").innerHTML = corpoPeriodoHtml(dp);
+  });
+
+  function parseGeradoEm(s) {
+    var m = /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/.exec(s || "");
+    if (!m) return null;
+    return new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +m[6]);
+  }
+
+  // Nunca diz "ao vivo" só porque o fetch deu certo -- isso seria enganoso se o notebook
+  // estiver desligado há horas publicando o mesmo snapshot antigo no Supabase. Calcula a
+  // idade real do dado (gerado_em) e mostra isso, ficando amarelo/vermelho quando velho.
+  function marcarFrescor(geradoEm) {
+    aoVivoEl.classList.remove("offline", "desatualizado");
+    var d = parseGeradoEm(geradoEm);
+    if (!d) { aoVivoTexto.textContent = "gerado em " + (geradoEm || "—"); return; }
+    var minutos = (Date.now() - d.getTime()) / 60000;
+    if (minutos < 0) minutos = 0;
+    if (minutos < 5) {
+      aoVivoTexto.textContent = "atualizado agora mesmo";
+    } else if (minutos < 60) {
+      aoVivoTexto.textContent = "atualizado há " + Math.round(minutos) + " min";
+    } else if (minutos < 1440) {
+      aoVivoEl.classList.add("desatualizado");
+      aoVivoTexto.textContent = "atualizado há " + Math.round(minutos / 60) + "h — pode estar desatualizado";
+    } else {
+      aoVivoEl.classList.add("offline");
+      aoVivoTexto.textContent = "atualizado há " + Math.round(minutos / 1440) + " dia(s) — notebook pode estar desligado";
+    }
   }
 
   function marcarOffline(msg) {
     aoVivoEl.classList.add("offline");
+    aoVivoEl.classList.remove("desatualizado");
     aoVivoTexto.textContent = msg;
   }
 
@@ -272,7 +350,7 @@
         return r.json();
       })
       .then(function (d) {
-        marcarOnline();
+        marcarFrescor(d.gerado_em);
         document.getElementById("resumo-clientes").textContent = (d.clientes || []).length;
         document.getElementById("resumo-waha").innerHTML = d.saude
           ? pill(d.saude.waha === "WORKING" ? "ok" : "crit", d.saude.waha)
